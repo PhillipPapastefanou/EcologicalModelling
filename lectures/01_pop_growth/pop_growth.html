@@ -2,28 +2,539 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ecological Modelling | Phillip Papastefanou</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Dynamics Lab | Wasm Edition</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; padding: 40px; color: #1e293b; }
-        .card { 
-            background: white; padding: 20px; border-radius: 12px; 
-            border: 1px solid #e2e8f0; max-width: 500px; 
-            transition: transform 0.2s, border-color 0.2s;
-            text-decoration: none; display: block; color: inherit;
+        :root {
+            --primary: #d62728;
+            --primary-hover: #b02021;
+            --bg-light: #f8fafc;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
         }
-        .card:hover { transform: translateY(-4px); border-color: #d62728; }
-        h2 { margin: 0; color: #d62728; font-size: 1.2rem; }
-        .tag { font-size: 0.7rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; font-family: "Inter", sans-serif; 
+            background-color: #f1f5f9; color: var(--text-main);
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+
+        /* Sidebar */
+        .sidebar { 
+            width: 300px; background: #ffffff; padding: 25px; 
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+        }
+        
+        h1 { font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--text-main); border-bottom: 2px solid var(--primary); padding-bottom: 8px; }
+        .section-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 10px; }
+
+        /* Controls */
+        .control-group { margin-bottom: 5px; }
+        .control-header { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 500; margin-bottom: 4px; }
+        .control-val { color: var(--primary); font-weight: 700; }
+        input[type=range] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+        
+        .mode-selector {
+            width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-light); font-weight: 600; color: var(--text-main); cursor: pointer;
+        }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        button { flex: 1; padding: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; border: none; font-size: 0.85rem; transition: 0.2s; }
+        #btnPlay { background: var(--primary); color: white; }
+        #btnGridToggle { background: #64748b; color: white; }
+        #btnReset { background: #cbd5e1; color: var(--text-main); }
+
+        /* Fixed Column Layout */
+        /* Main Display Areas: Side-by-Side Layout */
+        .main-content { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: row; /* Fixed to Row (Left and Right) */
+            overflow: hidden; 
+            background: #cbd5e1; 
+        }
+
+        .grid-container { 
+            flex: 0 0 700px; /* Fixed width for the Grid area */
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-right: 1px solid var(--border); /* Border on the right now */
+            border-bottom: none;
+            overflow: hidden; 
+            position: relative;
+        }
+
+        .plot-container { 
+            flex: 1; /* Plot takes up all remaining space on the right */
+            padding: 20px; 
+            background: var(--bg-light); 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 0; 
+            min-width: 0; /* Prevents Plotly from overflowing horizontally */
+        }
+
+        /* Zoom & Canvas Logic */
+        #zoomWrapper {
+            width: 200px; height: 200px; position: relative;
+            transform-origin: center center; transition: transform 0.1s;
+            border: 0.5px solid #000; 
+            box-sizing: content-box; 
+        }
+
+        canvas { 
+            background: #ffffff; 
+            width: 200px; height: 200px; 
+            image-rendering: pixelated; display: block; position: relative; z-index: 1;
+        }
+
+        /* Updated Grid Overlay Logic */
+        #gridOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 2; 
+            opacity: 0; /* Starts hidden */
+            transition: opacity 0.3s ease; /* Smooth fade-in */
+            background-size: 1px 1px;
+            background-image: url('data:image/svg+xml;utf8,<svg width="1" height="1" xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="0.1"/></svg>');
+        }
+
+        .dim-label {
+            position: absolute; font-size: 7px; font-weight: 800; color: #1e293b;
+            text-transform: uppercase; white-space: nowrap; background: rgba(255, 255, 255, 0.85);
+            padding: 2px 4px; border: 0.5px solid var(--border); border-radius: 2px; z-index: 3;
+        }
+        .dim-width { bottom: -15px; left: 50%; transform: translateX(-50%); }
+        .dim-height { left: -35px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+
+        /* Visual Placement Picker */
+        .placement-picker {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .picker-card {
+            background: var(--bg-light);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 80px;
+        }
+
+        .picker-card:hover { border-color: #cbd5e1; }
+
+        .picker-card.active {
+            border-color: var(--primary);
+            background: #fff;
+        }
+
+        .picker-icon {
+            width: 100%;
+            aspect-ratio: 1 / 1; 
+            background: white;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .picker-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        .picker-card.active .picker-label { color: var(--primary); }
+
+        /* Mini-Image Patterns inside icons */
+        .icon-dot { position: absolute; background: var(--primary); width: 15%; height: 15%; border-radius: 1px; }
+
+        footer { height: 40px; background: #ffffff; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; font-size: 0.8rem; color: var(--text-muted); }
     </style>
 </head>
 <body>
-    <h1>Lab Repository</h1>
-    <p>Select a simulation to launch the Wasm engine:</p>
 
-    <a href="lectures/01_pop_growth/pop_growth.html" class="card">
-        <span class="tag">Lecture 01</span>
-        <h2>Population Growth Model</h2>
-        <p>Spatial agent-based simulation with real-time data validation and RMSLE error tracking.</p>
-    </a>
+    <div class="workspace">
+        <aside class="sidebar">
+            <h1>Spatial Dynamics</h1>
+            
+            <div class="btn-group">
+                <button id="btnPlay" disabled>Loading Wasm...</button>
+                <button id="btnReset">↺ Reset</button>
+            </div>
+            
+            <span class="section-title">Timeline Controls</span>
+            <div class="control-group">
+                <div class="control-header"><label>Scrub Step (← / → keys)</label><span id="timeVal" class="control-val">0</span></div>
+                <input type="range" id="timeSlider" min="0" max="150" value="0">
+            </div>
+
+            <div class="metrics-container" style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                <div style="background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
+                    <div style="font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Actual N</div>
+                    <div id="agentCount" style="font-size: 1.2rem; font-weight: bold; color: var(--primary); font-family: monospace;">0</div>
+                </div>
+            </div>
+
+            <span class="section-title">Data Validation</span>
+            <div class="control-group">
+                <select class="mode-selector" id="dataSelect">
+                    <option value="none">No Data</option>
+                    <option value="case1">Case 1 (Log Error)</option>
+                    <option value="case2">Case 2 (95% Threshold)</option>
+                </select>
+            </div>
+            
+            <span class="section-title">Wasm Parameters</span>
+            <div class="control-group">
+                <div class="control-header"><label>Seeds (N₀)</label><span id="initValue" class="control-val">1</span></div>
+                <input type="range" id="initSlider" min="1" max="100" step="1" value="1">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header"><label>Growth (α)</label><span id="alphaValue" class="control-val">0.10</span></div>
+                <input type="range" id="alphaSlider" min="0.01" max="0.5" step="0.01" value="0.10">
+            </div>
+            <div class="control-group">
+                <div class="control-header"><label>Radius (R)</label><span id="jumpValue" class="control-val">2</span></div>
+                <input type="range" id="jumpSlider" min="0" max="10" step="1" value="2">
+            </div>
+
+            <span class="section-title">View Options</span>
+            <div class="control-group">
+                <div class="control-header"><label>Zoom Level</label><span id="zoomVal" class="control-val">16.0x</span></div>
+                <input type="range" id="zoomSlider" min="1.0" max="16.0" step="0.1" value="16.0">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header"><label>Initial Layout</label></div>
+                <div class="placement-picker" id="placementPicker">
+                    <div class="picker-card" data-value="random">
+                        <div class="picker-icon">
+                            <div class="icon-dot" style="top:20%; left:60%"></div>
+                            <div class="icon-dot" style="top:70%; left:10%"></div>
+                            <div class="icon-dot" style="top:40%; left:20%"></div>
+                        </div>
+                        <div class="picker-label">Random</div>
+                    </div>
+                    <div class="picker-card active" data-value="circle">
+                        <div class="picker-icon">
+                            <div class="icon-dot" style="top:40%; left:40%; width:20%; height:20%; border-radius:0;"></div>
+                        </div>
+                        <div class="picker-label">Center</div>
+                    </div>
+                    <div class="picker-card" data-value="grid">
+                        <div class="picker-icon">
+                            <div class="icon-dot" style="top:20%; left:20%"></div><div class="icon-dot" style="top:20%; left:65%"></div>
+                            <div class="icon-dot" style="top:65%; left:20%"></div><div class="icon-dot" style="top:65%; left:65%"></div>
+                        </div>
+                        <div class="picker-label">Grid</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content" id="mainView">
+            <div class="grid-container">
+                <div id="zoomWrapper">
+                    <div id="gridOverlay"></div>
+                    <div class="dim-label dim-width">200px</div>
+                    <div class="dim-label dim-height">200px</div>
+                    <canvas id="gridCanvas" width="200" height="200"></canvas>
+                </div>
+            </div>
+            <div class="plot-container">
+                <div id="populationPlot"></div>
+            </div>
+        </main>
+    </div>
+
+    <footer>Made with <span style="color: var(--primary); margin: 0 4px;">❤</span> by Phillip Papastefanou</footer>
+
+    <script src="model_fast.js"></script>
+
+    <script>
+        const WIDTH = 200, HEIGHT = 200, MAX_STEPS = 150;
+        let gridView, isPlaying = false, animationId, timeStep = 0, isGridRequested = false;
+        let wasmStepSimulation, wasmClearGrid, wasmSetSeed;
+        let gridHistory = [], popHistory = [];
+        let currentPlacement = 'circle'; 
+
+        // Mock Datasets for validation comparison
+        const datasets = {
+            none: null,
+            case1: { x: [0, 20, 40, 60, 80, 100, 120, 140], y: [10, 50, 300, 1500, 6000, 15000, 21000, 37000] },
+            case2: { x: [0, 25, 50, 75, 100, 125, 150], y: [10, 100, 800, 4000, 12000, 24000, 28000], capacity: 28000 }
+        };
+
+        const canvas = document.getElementById('gridCanvas'), ctx = canvas.getContext('2d');
+        const zoomWrapper = document.getElementById('zoomWrapper'), gridOverlay = document.getElementById('gridOverlay');
+        const timeS = document.getElementById('timeSlider'), zoomS = document.getElementById('zoomSlider');
+        const btnPlay = document.getElementById('btnPlay');
+
+        createModule().then(Module => {
+            wasmStepSimulation = Module.cwrap('stepSimulation', 'number', ['number', 'number', 'number']);
+            wasmClearGrid = Module.cwrap('clearGrid', null, []);
+            wasmSetSeed = Module.cwrap('setSeed', null, ['number']);
+            const getGridPointer = Module.cwrap('getGridPointer', 'number', []);
+            
+            const ptr = getGridPointer();
+            const buffer = (Module.wasmMemory && Module.wasmMemory.buffer) || (Module.HEAPU8 && Module.HEAPU8.buffer);
+            gridView = new Uint8Array(buffer, ptr, WIDTH * HEIGHT);
+
+            btnPlay.disabled = false;
+            btnPlay.innerText = "▶ Run";
+            initApp();
+        });
+
+        function syncToStep(target) {
+            if (target > gridHistory.length - 1) {
+                while (gridHistory.length - 1 < target) performSingleWasmStep();
+            }
+            timeStep = target;
+            gridView.set(gridHistory[timeStep]);
+            updateDisplay();
+        }
+
+        function updateGridVisibility() {
+            const z = parseFloat(zoomS.value);
+            gridOverlay.style.opacity = (z >= 6.0) ? '1' : '0';
+        }
+
+        function initApp() {
+            btnPlay.onclick = () => {
+                if(timeStep >= MAX_STEPS) resetAndPrecalc();
+                isPlaying = !isPlaying;
+                btnPlay.innerText = isPlaying ? "⏸ Pause" : "▶ Resume";
+                if(isPlaying) runLoop();
+            };
+
+            document.getElementById('btnReset').onclick = resetAndPrecalc;
+            
+            zoomS.oninput = () => {
+                zoomWrapper.style.transform = `scale(${zoomS.value})`;
+                document.getElementById('zoomVal').innerText = parseFloat(zoomS.value).toFixed(1) + "x";
+                updateGridVisibility();
+            };
+
+            timeS.oninput = () => {
+                isPlaying = false;
+                btnPlay.innerText = "▶ Resume";
+                syncToStep(parseInt(timeS.value));
+            };
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') {
+                    isPlaying = false;
+                    btnPlay.innerText = "▶ Resume";
+                    syncToStep(Math.min(MAX_STEPS, timeStep + 1));
+                } else if (e.key === 'ArrowLeft') {
+                    isPlaying = false;
+                    btnPlay.innerText = "▶ Resume";
+                    syncToStep(Math.max(0, timeStep - 1));
+                }
+            });
+
+            ['initSlider', 'alphaSlider', 'jumpSlider'].forEach(id => {
+                const s = document.getElementById(id);
+                s.oninput = () => {
+                    document.getElementById(id.replace('Slider', 'Value')).innerText = s.value;
+                    resetAndPrecalc();
+                };
+            });
+            
+            // Visual Picker Events
+            const cards = document.querySelectorAll('.picker-card');
+            cards.forEach(card => {
+                card.onclick = () => {
+                    cards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+                    currentPlacement = card.getAttribute('data-value');
+                    resetAndPrecalc();
+                };
+            });
+
+            // Re-render plot instantly if Data dropdown changes
+            document.getElementById('dataSelect').onchange = updateDisplay;
+
+            zoomS.oninput();
+            resetAndPrecalc();
+        }
+
+        function resetAndPrecalc() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            btnPlay.innerText = "▶ Run";
+            wasmClearGrid();
+            wasmSetSeed(Date.now() >>> 0);
+            
+            const n = parseInt(document.getElementById('initSlider').value);
+            const placement = currentPlacement;
+            let placed = 0;
+            const cx = WIDTH / 2, cy = HEIGHT / 2;
+
+            if (placement === 'random') {
+                while(placed < n) {
+                    let idx = Math.floor(Math.random() * WIDTH * HEIGHT);
+                    if(gridView[idx] === 0) { gridView[idx] = 1; placed++; }
+                }
+            } else if (placement === 'circle') {
+                const radius = Math.max(5, Math.sqrt(n) * 1.5); 
+                while(placed < n) {
+                    const angle = Math.random() * 2 * Math.PI;
+                    const r = Math.sqrt(Math.random()) * radius;
+                    const px = Math.round(cx + r * Math.cos(angle));
+                    const py = Math.round(cy + r * Math.sin(angle));
+                    if (px >= 0 && px < WIDTH && py >= 0 && py < HEIGHT) {
+                        let idx = py * WIDTH + px;
+                        if (gridView[idx] === 0) { gridView[idx] = 1; placed++; }
+                    }
+                }
+            } else if (placement === 'grid') {
+                const cols = Math.ceil(Math.sqrt(n));
+                const rows = Math.ceil(n / cols);
+                const dx = WIDTH / (cols + 1);
+                const dy = HEIGHT / (rows + 1);
+                for(let r = 1; r <= rows && placed < n; r++) {
+                    for(let c = 1; c <= cols && placed < n; c++) {
+                        const px = Math.round(c * dx);
+                        const py = Math.round(r * dy);
+                        let idx = py * WIDTH + px;
+                        if(gridView[idx] === 0) { gridView[idx] = 1; placed++; }
+                    }
+                }
+            }
+
+            gridHistory = [new Uint8Array(gridView)];
+            popHistory = [n];
+            timeStep = 0;
+            updateDisplay();
+            initPlot();
+        }
+
+        function performSingleWasmStep() {
+            const count = wasmStepSimulation(
+                parseFloat(document.getElementById('alphaSlider').value),
+                parseInt(document.getElementById('jumpSlider').value),
+                0
+            );
+            gridHistory.push(new Uint8Array(gridView));
+            popHistory.push(count);
+        }
+
+        function runLoop() {
+            if (isPlaying && timeStep < MAX_STEPS) {
+                performSingleWasmStep();
+                timeStep++;
+                updateDisplay();
+                setTimeout(runLoop, 30);
+            } else {
+                isPlaying = false;
+                btnPlay.innerText = "▶ Run";
+            }
+        }
+
+        function updateDisplay() {
+            timeS.value = timeStep;
+            document.getElementById('timeVal').innerText = timeStep;
+            document.getElementById('agentCount').innerText = popHistory[timeStep];
+            drawToCanvas();
+            refreshPlotly();
+        }
+
+        function drawToCanvas() {
+            const img = ctx.createImageData(WIDTH, HEIGHT);
+            for (let i = 0; i < WIDTH * HEIGHT; i++) {
+                if (gridView[i] === 0) continue;
+                let px = i * 4;
+                img.data[px] = gridView[i] === 1 ? 214 : 255;
+                img.data[px+1] = gridView[i] === 1 ? 39 : 165;
+                img.data[px+2] = gridView[i] === 1 ? 40 : 0;
+                img.data[px+3] = 255;
+            }
+            ctx.putImageData(img, 0, 0);
+        }
+
+        function initPlot() {
+            Plotly.newPlot('populationPlot', [], {
+                margin: { t: 40, r: 20, b: 40, l: 60 },
+                xaxis: { title: 'Step', range: [0, MAX_STEPS] },
+                yaxis: { title: 'N', autorange: true },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            }, {responsive: true, displayModeBar: false});
+        }
+
+function refreshPlotly() {
+    const dataKey = document.getElementById('dataSelect').value;
+    let plotData = [{
+        x: Array.from({length: timeStep + 1}, (_, i) => i),
+        y: popHistory.slice(0, timeStep + 1),
+        type: 'scatter', mode: 'lines', line: { color: '#d62728', width: 3 }, name: 'Simulation'
+    }];
+    
+    let layoutShapes = [], layoutAnnotations = [];
+    let yAxisConfig = { title: 'N', autorange: true }; // Default
+
+    if (dataKey !== 'none') {
+        // Force Y-axis limit to 40,000
+        yAxisConfig = { title: 'N', range: [0, 40000] };
+        const data = datasets[dataKey];
+        
+        // Show ALL markers from the beginning (not filtered by timeStep)
+        plotData.push({
+            x: data.x, y: data.y,
+            type: 'scatter', mode: 'markers', 
+            marker: { color: '#1e293b', size: 8, symbol: 'circle-open', line: {width: 2} },
+            name: 'Target Data'
+        });
+
+        // Calculate Log Error only up to the current simulation timeStep
+        let errorSum = 0, count = 0;
+        for (let i = 0; i < data.x.length; i++) {
+            let t = data.x[i];
+            if (t <= timeStep && t < popHistory.length) {
+                errorSum += Math.pow(Math.log(popHistory[t] + 1) - Math.log(data.y[i] + 1), 2);
+                count++;
+            }
+        }
+
+        if (count > 0) {
+            let finalError = Math.sqrt(errorSum / count).toFixed(3);
+            layoutAnnotations.push({
+                x: 0.05, y: 0.95, xref: 'paper', yref: 'paper',
+                text: `<b>Log Error (RMSLE):</b> ${finalError}`,
+                showarrow: false, font: { size: 12, color: '#1e293b', family: 'monospace' },
+                bgcolor: 'rgba(255, 255, 255, 0.9)', bordercolor: '#e2e8f0', borderwidth: 1, borderpad: 6
+            });
+        }
+        
+        // ... (threshold logic remains similar but uses yAxisConfig)
+    }
+
+    Plotly.react('populationPlot', plotData, {
+        margin: { t: 40, r: 20, b: 40, l: 60 },
+        xaxis: { title: 'Step', range: [0, MAX_STEPS] },
+        yaxis: yAxisConfig,
+        shapes: layoutShapes,
+        annotations: layoutAnnotations,
+        showlegend: false,
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+    });
+}
+
+    </script>
 </body>
 </html>
