@@ -13,8 +13,28 @@
             margin-bottom: 15px; transition: 0.2s; display: flex; justify-content: space-between; align-items: center;
         }
         .lecture-item:hover { border-color: #d62728; background: #fff8f8; }
-        .lecture-link { text-decoration: none; color: #d62728; font-weight: 700; font-size: 1.1rem; }
-        .badge { background: #64748b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; }
+        
+        .lecture-info { flex-grow: 1; }
+        .lecture-title { font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 5px; }
+        .lecture-desc { color: #64748b; font-size: 0.9rem; }
+        
+        .links-group { display: flex; gap: 10px; align-items: center; }
+        
+        .btn-link { 
+            text-decoration: none; padding: 8px 12px; border-radius: 6px; 
+            font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+            transition: 0.2s; white-space: nowrap;
+        }
+        
+        /* Interactive Button style */
+        .btn-interactive { background: #d62728; color: white; }
+        .btn-interactive:hover { background: #b02021; }
+        
+        /* Slides Button style */
+        .btn-slides { background: #64748b; color: white; }
+        .btn-slides:hover { background: #475569; }
+
+        .badge { background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; }
     </style>
 </head>
 <body>
@@ -24,12 +44,22 @@
         
         <ul class="lecture-list">
             <li class="lecture-item">
-                <div>
-                    <a class="lecture-link" href="/EcologicalModelling/lectures/01_pop_growth/pop_growth.html">01. Population Growth</a>                    <div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">Spatial Agent-Based Model with Wasm Engine.</div>
+                <div class="lecture-info">
+                    <div class="lecture-title">01. Population Growth <span class="badge">Wasm</span></div>
+                    <div class="lecture-desc">Spatial Agent-Based Model with Wasm Engine.</div>
                 </div>
-                <span class="badge">Wasm</span>
+                
+                <div class="links-group">
+                    <a class="btn-link btn-slides" href="/EcologicalModelling/lectures/01_pop_growth/01_populaitonswachseum" target="_blank">
+                        📄 Slides
+                    </a>
+                    
+                    <a class="btn-link btn-interactive" href="/EcologicalModelling/lectures/01_pop_growth/pop_growth.html">
+                        🚀 Interactive
+                    </a>
+                </div>
             </li>
-            </ul>
+        </ul>
     </div>
 </body>
 </html>
