@@ -71,7 +71,7 @@ extern "C" {
                 int ny = y + dy;
 
                 // Boundary check and collision check
-                if (nx >= 0 && nx < WIDTH && ny >= 0 && nx < HEIGHT) {
+                if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
                     int target = ny * WIDTH + nx;
                     if (grid[target] == 0) {
                         grid[i] = 0;

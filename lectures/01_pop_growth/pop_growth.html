@@ -182,21 +182,19 @@
                 <input type="range" id="timeSlider" min="0" max="150" value="0">
             </div>
 
-            <div class="metrics-container" style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+            <div class="metrics-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                 <div style="background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
-                    <div style="font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Actual N</div>
+                    <div style="font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Total N</div>
                     <div id="agentCount" style="font-size: 1.2rem; font-weight: bold; color: var(--primary); font-family: monospace;">0</div>
+                </div>
+                
+                <div style="background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
+                    <div style="font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">New N</div>
+                    <div id="newAgentCount" style="font-size: 1.2rem; font-weight: bold; color: #ffa500; font-family: monospace;">0</div>
                 </div>
             </div>
 
-            <span class="section-title">Data Validation</span>
-            <div class="control-group">
-                <select class="mode-selector" id="dataSelect">
-                    <option value="none">No Data</option>
-                    <option value="case1">Case 1 (Log Error)</option>
-                    <option value="case2">Case 2 (95% Threshold)</option>
-                </select>
-            </div>
+
             
             <span class="section-title">Wasm Parameters</span>
             <div class="control-group">
@@ -245,6 +243,16 @@
                     </div>
                 </div>
             </div>
+
+
+            <span class="section-title">Data Validation</span>
+            <div class="control-group">
+                <select class="mode-selector" id="dataSelect">
+                    <option value="none">No Data</option>
+                    <option value="case1">Case 1 (Log Error)</option>
+                    <option value="case2">Case 2 (95% Threshold)</option>
+                </select>
+            </div>
         </aside>
 
         <main class="main-content" id="mainView">
@@ -270,7 +278,7 @@
         const WIDTH = 200, HEIGHT = 200, MAX_STEPS = 150;
         let gridView, isPlaying = false, animationId, timeStep = 0, isGridRequested = false;
         let wasmStepSimulation, wasmClearGrid, wasmSetSeed;
-        let gridHistory = [], popHistory = [];
+        let gridHistory = [], popHistory = [], newPopHistory = [];
         let currentPlacement = 'circle'; 
 
         // Mock Datasets for validation comparison
@@ -330,11 +338,25 @@
                 updateGridVisibility();
             };
 
+
             timeS.oninput = () => {
-                isPlaying = false;
-                btnPlay.innerText = "▶ Resume";
-                syncToStep(parseInt(timeS.value));
-            };
+                            // 1. Stop the simulation immediately if it's running
+                            isPlaying = false;
+                            btnPlay.innerText = "▶ Resume";
+
+                            // 2. Determine how far we have actually simulated
+                            const maxAvailable = popHistory.length - 1;
+                            let target = parseInt(timeS.value);
+
+                            // 3. Prevent the slider from going "into the future"
+                            if (target > maxAvailable) {
+                                target = maxAvailable;
+                                timeS.value = target; 
+                            }
+
+                            // 4. Sync and draw
+                            syncToStep(target);
+                        };
 
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowRight') {
@@ -420,20 +442,29 @@
 
             gridHistory = [new Uint8Array(gridView)];
             popHistory = [n];
+            newPopHistory = [0];
             timeStep = 0;
             updateDisplay();
-            initPlot();
+            //initPlot();
         }
 
         function performSingleWasmStep() {
-            const count = wasmStepSimulation(
-                parseFloat(document.getElementById('alphaSlider').value),
-                parseInt(document.getElementById('jumpSlider').value),
-                0
-            );
-            gridHistory.push(new Uint8Array(gridView));
-            popHistory.push(count);
-        }
+                    // Safety: If for some reason popHistory is empty, we can't calculate a diff
+                    const previousCount = popHistory.length > 0 ? popHistory[popHistory.length - 1] : 0;
+
+                    const count = wasmStepSimulation(
+                        parseFloat(document.getElementById('alphaSlider').value),
+                        parseInt(document.getElementById('jumpSlider').value),
+                        0
+                    );
+
+                    gridHistory.push(new Uint8Array(gridView));
+                    popHistory.push(count);
+
+                    // Calculate new individuals (delta)
+                    const diff = count - previousCount;
+                    newPopHistory.push(diff);
+                }
 
         function runLoop() {
             if (isPlaying && timeStep < MAX_STEPS) {
@@ -451,6 +482,7 @@
             timeS.value = timeStep;
             document.getElementById('timeVal').innerText = timeStep;
             document.getElementById('agentCount').innerText = popHistory[timeStep];
+            document.getElementById('newAgentCount').innerText = newPopHistory[timeStep] || 0;
             drawToCanvas();
             refreshPlotly();
         }
@@ -525,14 +557,15 @@ function refreshPlotly() {
     }
 
     Plotly.react('populationPlot', plotData, {
-        margin: { t: 40, r: 20, b: 40, l: 60 },
-        xaxis: { title: 'Step', range: [0, MAX_STEPS] },
-        yaxis: yAxisConfig,
-        shapes: layoutShapes,
-        annotations: layoutAnnotations,
-        showlegend: false,
-        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
-    });
+                    margin: { t: 40, r: 20, b: 40, l: 60 },
+                    xaxis: { title: 'Step', range: [0, MAX_STEPS] },
+                    yaxis: yAxisConfig,
+                    shapes: layoutShapes,
+                    annotations: layoutAnnotations,
+                    showlegend: false,
+                    paper_bgcolor: 'rgba(0,0,0,0)', 
+                    plot_bgcolor: 'rgba(0,0,0,0)'
+                }, { responsive: true, displayModeBar: false });
 }
 
     </script>
