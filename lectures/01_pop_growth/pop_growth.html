@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spatial Dynamics Lab | Wasm Edition</title>
+    <title>Population Dynamics Lab </title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         :root {
@@ -169,7 +169,7 @@
 
     <div class="workspace">
         <aside class="sidebar">
-            <h1>Spatial Dynamics</h1>
+            <h1>Population Growth</h1>
             
             <div class="btn-group">
                 <button id="btnPlay" disabled>Loading Wasm...</button>
@@ -178,7 +178,7 @@
             
             <span class="section-title">Timeline Controls</span>
             <div class="control-group">
-                <div class="control-header"><label>Scrub Step (← / → keys)</label><span id="timeVal" class="control-val">0</span></div>
+                <div class="control-header"><label>Time steps in hours (← / → keys)</label><span id="timeVal" class="control-val">0</span></div>
                 <input type="range" id="timeSlider" min="0" max="150" value="0">
             </div>
 
@@ -196,24 +196,24 @@
 
 
             
-            <span class="section-title">Wasm Parameters</span>
+            <span class="section-title">Parameters</span>
             <div class="control-group">
-                <div class="control-header"><label>Seeds (N₀)</label><span id="initValue" class="control-val">1</span></div>
+                <div class="control-header"><label>Initial individuals (N₀)</label><span id="initValue" class="control-val">1</span></div>
                 <input type="range" id="initSlider" min="1" max="100" step="1" value="1">
             </div>
 
             <div class="control-group">
-                <div class="control-header"><label>Growth (α)</label><span id="alphaValue" class="control-val">0.10</span></div>
+                <div class="control-header"><label>Growth rate (α)</label><span id="alphaValue" class="control-val">0.10</span></div>
                 <input type="range" id="alphaSlider" min="0.01" max="0.5" step="0.01" value="0.10">
             </div>
             <div class="control-group">
-                <div class="control-header"><label>Radius (R)</label><span id="jumpValue" class="control-val">2</span></div>
+                <div class="control-header"><label>Moving radius (R)</label><span id="jumpValue" class="control-val">2</span></div>
                 <input type="range" id="jumpSlider" min="0" max="10" step="1" value="2">
             </div>
 
             <span class="section-title">View Options</span>
             <div class="control-group">
-                <div class="control-header"><label>Zoom Level</label><span id="zoomVal" class="control-val">16.0x</span></div>
+                <div class="control-header"><label>Zoom</label><span id="zoomVal" class="control-val">16.0x</span></div>
                 <input type="range" id="zoomSlider" min="1.0" max="16.0" step="0.1" value="16.0">
             </div>
 
@@ -245,7 +245,7 @@
             </div>
 
 
-            <span class="section-title">Data Validation</span>
+            <span class="section-title">Data Evaluation</span>
             <div class="control-group">
                 <select class="mode-selector" id="dataSelect">
                     <option value="none">No Data</option>
@@ -533,28 +533,30 @@ function refreshPlotly() {
             name: 'Target Data'
         });
 
-        // Calculate Log Error only up to the current simulation timeStep
-        let errorSum = 0, count = 0;
+        // 3. Calculate MAE
+        let absErrorSum = 0, count = 0;
         for (let i = 0; i < data.x.length; i++) {
             let t = data.x[i];
             if (t <= timeStep && t < popHistory.length) {
-                errorSum += Math.pow(Math.log(popHistory[t] + 1) - Math.log(data.y[i] + 1), 2);
+                absErrorSum += Math.abs(popHistory[t] - data.y[i]);
                 count++;
             }
         }
 
-        if (count > 0) {
-            let finalError = Math.sqrt(errorSum / count).toFixed(3);
-            layoutAnnotations.push({
-                x: 0.05, y: 0.95, xref: 'paper', yref: 'paper',
-                text: `<b>Log Error (RMSLE):</b> ${finalError}`,
-                showarrow: false, font: { size: 12, color: '#1e293b', family: 'monospace' },
-                bgcolor: 'rgba(255, 255, 255, 0.9)', bordercolor: '#e2e8f0', borderwidth: 1, borderpad: 6
-            });
+    if (count > 0) {
+                const mae = Math.round(absErrorSum / count).toLocaleString();
+                layoutAnnotations.push({
+                    x: 0, y: 1.1, xref: 'paper', yref: 'paper',
+                    text: `<b>MEAN ABSOLUTE ERROR:</b> ${mae} individuals`,
+                    showarrow: false, font: { size: 14, family: 'monospace' },
+                    align: 'left', bgcolor: 'rgba(255, 255, 255, 0.8)'
+                });
+            }
+        } else {
+            // 4. Stable Y-axis for "No Data" (prevents -1 to 4 jump)
+            const currentMax = Math.max(...popHistory);
+            yAxisConfig = { title: 'N', range: [0, Math.max(2, currentMax * 1.1)] };
         }
-        
-        // ... (threshold logic remains similar but uses yAxisConfig)
-    }
 
     Plotly.react('populationPlot', plotData, {
                     margin: { t: 40, r: 20, b: 40, l: 60 },
