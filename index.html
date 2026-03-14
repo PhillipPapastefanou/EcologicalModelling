@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ecological Modelling Lab</title>
+    <title>Ökologische Modellierung | Vorlesung</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; padding: 50px; color: #1e293b; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        body { font-family: 'Avenir Next', Avenir, 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #f1f5f9; padding: 50px; color: #1e293b; }        .container { max-width: 800px; margin: auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         h1 { border-bottom: 3px solid #d62728; padding-bottom: 10px; }
         .lecture-list { list-style: none; padding: 0; margin-top: 30px; }
         .lecture-item { 
@@ -14,51 +13,80 @@
         }
         .lecture-item:hover { border-color: #d62728; background: #fff8f8; }
         
-        .lecture-info { flex-grow: 1; }
-        .lecture-title { font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 5px; }
-        .lecture-desc { color: #64748b; font-size: 0.9rem; }
+        .lecture-info { flex-grow: 1; padding-right: 20px; }
+        .lecture-title { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 5px; }
+        .lecture-desc { color: #64748b; font-size: 0.9rem; line-height: 1.4; }
         
-        .links-group { display: flex; gap: 10px; align-items: center; }
+        .links-group { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
         
         .btn-link { 
             text-decoration: none; padding: 8px 12px; border-radius: 6px; 
             font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-            transition: 0.2s; white-space: nowrap;
+            transition: 0.2s; white-space: nowrap; display: inline-block; text-align: center;
         }
         
-        /* Interactive Button style */
         .btn-interactive { background: #d62728; color: white; }
         .btn-interactive:hover { background: #b02021; }
         
-        /* Slides Button style */
         .btn-slides { background: #64748b; color: white; }
         .btn-slides:hover { background: #475569; }
 
-        .badge { background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; }
+        .btn-disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
+        .badge { background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; vertical-align: middle; margin-left: 5px;}
+        .badge-theory { background: #dbeafe; color: #1e40af; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Ecological Modelling Lab</h1>
-        <p>Interactive simulations and spatial dynamics models.</p>
+        <h1>Einführung in die ökologische Modellierung</h1>
+        <p>Interaktive Vorlesungsunterlagen und simulationsbasierte Übungen.</p>
         
         <ul class="lecture-list">
+
             <li class="lecture-item">
                 <div class="lecture-info">
-                    <div class="lecture-title">01. Population Growth <span class="badge">Wasm</span></div>
-                    <div class="lecture-desc">Spatial Agent-Based Model with Wasm Engine.</div>
+                    <div class="lecture-title">01. Konzeptionelle Modelle und Begriffe <span class="badge badge-theory">Theorie</span></div>
+                    <div class="lecture-desc">Grundlagen der Modellierung: Wozu brauchen wir Modelle in der Ökologie und wie bilden wir die komplexe Realität vereinfacht ab?</div>
+                </div>
+
+                <div class="links-group">
+                    <span class="btn-link btn-disabled">In Vorbereitung</span>
+                </div>
+            </li>
+
+            <li class="lecture-item">
+                <div class="lecture-info">
+                    <div class="lecture-title">02. Populationswachstum <span class="badge">Wasm</span></div>
+                    <div class="lecture-desc">Von exponentiellem zu logistischem Wachstum. Wir simulieren, wie sich Populationen im Raum ausbreiten und an Ressourcengrenzen stoßen.</div>
                 </div>
                 
                 <div class="links-group">
-                    <a class="btn-link btn-slides" href="/EcologicalModelling/lectures/01_pop_growth/01_populaitonswachseum.pdf" target="_blank">
-                        📄 Slides
-                    </a>
-                    
-                    <a class="btn-link btn-interactive" href="/EcologicalModelling/lectures/01_pop_growth/pop_growth.html">
-                        🚀 Interactive
-                    </a>
+                    <a class="btn-link btn-slides" href="/EcologicalModelling/lectures/01_pop_growth/01_populationswachstum.pdf" target="_blank">📄 Skript</a>
+                    <a class="btn-link btn-interactive" href="/EcologicalModelling/lectures/01_pop_growth/pop_growth.html">🚀 Interaktives Modell</a>
                 </div>
             </li>
+
+            <li class="lecture-item">
+                <div class="lecture-info">
+                    <div class="lecture-title">03. Konkurrenz & Multipopulationsmodelle</div>
+                    <div class="lecture-desc">Interaktionen zwischen Arten: Wann können verschiedene Spezies im selben Lebensraum koexistieren und wann kommt es zum Konkurrenzausschluss?</div>
+                </div>
+                <div class="links-group">
+                    <span class="btn-link btn-disabled">In Vorbereitung</span>
+                </div>
+            </li>
+
+            <li class="lecture-item">
+                <div class="lecture-info">
+                    <div class="lecture-title">04. Räuber-Beute-Beziehungen</div>
+                    <div class="lecture-desc">Wie beeinflussen sich Jäger und Gejagte gegenseitig? Wir untersuchen die Entstehung von Populationszyklen und Abhängigkeiten.</div>
+                </div>
+                <div class="links-group">
+                    <span class="btn-link btn-disabled">In Vorbereitung</span>
+                </div>
+            </li>
+            
         </ul>
     </div>
 </body>
