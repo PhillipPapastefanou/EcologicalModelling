@@ -52,7 +52,7 @@
         #btnGridToggle { background: #64748b; color: white; }
         #btnReset { background: #cbd5e1; color: var(--text-main); }
 
-        /* Fixed Column Layout */
+        /* Main Content Layout */
         .main-content { 
             flex: 1; 
             display: flex; 
@@ -72,14 +72,44 @@
             position: relative;
         }
 
-        .plot-container { 
+        /* 50/50 Right Panel Layout */
+        .right-panel { 
             flex: 1; 
-            padding: 20px; 
-            background: var(--bg-light); 
             display: flex; 
             flex-direction: column; 
-            min-height: 0; 
+            background: var(--bg-light); 
             min-width: 0; 
+            overflow: hidden;
+        }
+
+        .plot-half {
+            flex: 1; /* Takes up 50% height if image is shown, 100% if hidden */
+            min-height: 0; 
+            padding: 20px;
+            display: flex;
+        }
+
+        #populationPlot {
+            flex: 1;
+            width: 100%;
+        }
+
+        .image-half {
+            flex: 1; /* Takes bottom 50% */
+            min-height: 0;
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+        }
+
+        #referenceImage {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; 
+            border-radius: 8px;
         }
 
         /* Zoom & Canvas Logic */
@@ -260,8 +290,13 @@
                     <canvas id="gridCanvas" width="200" height="200"></canvas>
                 </div>
             </div>
-            <div class="plot-container">
-                <div id="populationPlot"></div>
+            <div class="right-panel">
+                <div class="plot-half">
+                    <div id="populationPlot"></div>
+                </div>
+                <div class="image-half" id="imageHalf">
+                    <img id="referenceImage" src="taiwan_covid_cases.png" alt="Taiwan Reference Data">
+                </div>
             </div>
         </main>
     </div>
@@ -277,18 +312,16 @@
         let gridHistory = [], popHistory = [], newPopHistory = [];
         let currentPlacement = 'circle'; 
 
-        // Real-world cases scaled proportionally to fit a 40,000 max Y-axis limit
-        // 1 month = 4 weeks (steps), starting Jan=0, Feb=4... Dec=44
         const datasets = {
             none: null,
             case1: { 
                 name: "Australia Data",
-                x: [0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132], 
+                x: [30, 39, 49, 58, 67, 76, 86, 95, 104, 113, 123, 132], 
                 y: [7677, 10370, 15757, 20760, 26147, 29610, 34228, 36537, 37114, 37499, 38461, 40000] 
             },
             case2: { 
                 name: "Taiwan Data",
-                x: [0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132], 
+                x: [5, 16, 30, 42, 53, 65, 79, 91, 103, 115, 128, 140], 
                 y: [85, 94, 107, 555, 9507, 17565, 20923, 24280, 29652, 35024, 37485, 39500] 
             }
         };
@@ -492,6 +525,22 @@
 
         function refreshPlotly() {
             const dataKey = document.getElementById('dataSelect').value;
+            const imageHalf = document.getElementById('imageHalf');
+            
+            // GATE: Only update the DOM if the state actually needs to change!
+            const wantsImage = (dataKey === 'case2');
+            const hasImage = (imageHalf.style.display === 'flex');
+            
+            if (wantsImage && !hasImage) {
+                imageHalf.style.display = 'flex';
+                // Force Plotly to instantly snap to the new 50% height
+                setTimeout(() => Plotly.Plots.resize('populationPlot'), 10);
+            } else if (!wantsImage && hasImage) {
+                imageHalf.style.display = 'none';
+                // Force Plotly to instantly snap back to 100% height
+                setTimeout(() => Plotly.Plots.resize('populationPlot'), 10);
+            }
+
             let plotData = [{
                 x: Array.from({length: timeStep + 1}, (_, i) => i),
                 y: popHistory.slice(0, timeStep + 1),
@@ -548,6 +597,7 @@
                 plot_bgcolor: 'rgba(0,0,0,0)'
             }, { responsive: true, displayModeBar: false });
         }
+
     </script>
 </body>
 </html>
