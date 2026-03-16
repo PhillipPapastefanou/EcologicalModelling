@@ -7,8 +7,9 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         :root {
-            --primary: #d62728;
+            --primary: #d62728; /* Kept red */
             --primary-hover: #b02021;
+            --custom-blue: #007bff; /* Added custom blue here */
             --bg-light: #f8fafc;
             --border: #e2e8f0;
             --text-main: #1e293b;
@@ -190,7 +191,7 @@
                 
                 <div style="background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
                     <div style="font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">New N</div>
-                    <div id="newAgentCount" style="font-size: 1.2rem; font-weight: bold; color: #ffa500; font-family: monospace;">0</div>
+                    <div id="newAgentCount" style="font-size: 1.2rem; font-weight: bold; color: var(--custom-blue); font-family: monospace;">0</div>
                 </div>
             </div>
 
@@ -492,9 +493,12 @@
             for (let i = 0; i < WIDTH * HEIGHT; i++) {
                 if (gridView[i] === 0) continue;
                 let px = i * 4;
-                img.data[px] = gridView[i] === 1 ? 214 : 255;
-                img.data[px+1] = gridView[i] === 1 ? 39 : 165;
-                img.data[px+2] = gridView[i] === 1 ? 40 : 0;
+                
+                // Keep Red for gridView[i] === 1 (214, 39, 40)
+                // Replaced Orange (255, 165, 0) with custom blue RGB (0, 123, 255)
+                img.data[px] = gridView[i] === 1 ? 214 : 0;
+                img.data[px+1] = gridView[i] === 1 ? 39 : 123;
+                img.data[px+2] = gridView[i] === 1 ? 40 : 255;
                 img.data[px+3] = 255;
             }
             ctx.putImageData(img, 0, 0);
