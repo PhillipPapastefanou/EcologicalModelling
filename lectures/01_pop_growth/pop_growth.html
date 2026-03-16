@@ -7,9 +7,9 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         :root {
-            --primary: #d62728; /* Kept red */
+            --primary: #d62728;
             --primary-hover: #b02021;
-            --custom-blue: #007bff; /* Added custom blue here */
+            --custom-blue: #007bff;
             --bg-light: #f8fafc;
             --border: #e2e8f0;
             --text-main: #1e293b;
@@ -53,34 +53,33 @@
         #btnReset { background: #cbd5e1; color: var(--text-main); }
 
         /* Fixed Column Layout */
-        /* Main Display Areas: Side-by-Side Layout */
         .main-content { 
             flex: 1; 
             display: flex; 
-            flex-direction: row; /* Fixed to Row (Left and Right) */
+            flex-direction: row; 
             overflow: hidden; 
             background: #cbd5e1; 
         }
 
         .grid-container { 
-            flex: 0 0 700px; /* Fixed width for the Grid area */
+            flex: 0 0 700px; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            border-right: 1px solid var(--border); /* Border on the right now */
+            border-right: 1px solid var(--border);
             border-bottom: none;
             overflow: hidden; 
             position: relative;
         }
 
         .plot-container { 
-            flex: 1; /* Plot takes up all remaining space on the right */
+            flex: 1; 
             padding: 20px; 
             background: var(--bg-light); 
             display: flex; 
             flex-direction: column; 
             min-height: 0; 
-            min-width: 0; /* Prevents Plotly from overflowing horizontally */
+            min-width: 0; 
         }
 
         /* Zoom & Canvas Logic */
@@ -101,8 +100,8 @@
         #gridOverlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 2; 
-            opacity: 0; /* Starts hidden */
-            transition: opacity 0.3s ease; /* Smooth fade-in */
+            opacity: 0; 
+            transition: opacity 0.3s ease; 
             background-size: 1px 1px;
             background-image: url('data:image/svg+xml;utf8,<svg width="1" height="1" xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="0.1"/></svg>');
         }
@@ -160,7 +159,6 @@
         .picker-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
         .picker-card.active .picker-label { color: var(--primary); }
 
-        /* Mini-Image Patterns inside icons */
         .icon-dot { position: absolute; background: var(--primary); width: 15%; height: 15%; border-radius: 1px; }
 
         footer { height: 40px; background: #ffffff; border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; font-size: 0.8rem; color: var(--text-muted); }
@@ -179,7 +177,7 @@
             
             <span class="section-title">Timeline Controls</span>
             <div class="control-group">
-                <div class="control-header"><label>Time steps in hours (← / → keys)</label><span id="timeVal" class="control-val">0</span></div>
+                <div class="control-header"><label>Time steps in weeks (← / → keys)</label><span id="timeVal" class="control-val">0</span></div>
                 <input type="range" id="timeSlider" min="0" max="150" value="0">
             </div>
 
@@ -195,8 +193,6 @@
                 </div>
             </div>
 
-
-            
             <span class="section-title">Parameters</span>
             <div class="control-group">
                 <div class="control-header"><label>Initial individuals (N₀)</label><span id="initValue" class="control-val">1</span></div>
@@ -245,13 +241,12 @@
                 </div>
             </div>
 
-
             <span class="section-title">Data Evaluation</span>
             <div class="control-group">
                 <select class="mode-selector" id="dataSelect">
                     <option value="none">No Data</option>
-                    <option value="case1">Case 1 (Log Error)</option>
-                    <option value="case2">Case 2 (95% Threshold)</option>
+                    <option value="case1">Australia</option>
+                    <option value="case2">Taiwan</option>
                 </select>
             </div>
         </aside>
@@ -282,11 +277,20 @@
         let gridHistory = [], popHistory = [], newPopHistory = [];
         let currentPlacement = 'circle'; 
 
-        // Mock Datasets for validation comparison
+        // Real-world cases scaled proportionally to fit a 40,000 max Y-axis limit
+        // 1 month = 4 weeks (steps), starting Jan=0, Feb=4... Dec=44
         const datasets = {
             none: null,
-            case1: { x: [0, 20, 40, 60, 80, 100, 120, 140], y: [10, 50, 300, 1500, 6000, 15000, 21000, 37000] },
-            case2: { x: [0, 25, 50, 75, 100, 125, 150], y: [10, 100, 800, 4000, 12000, 24000, 28000], capacity: 28000 }
+            case1: { 
+                name: "Australia Data",
+                x: [0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132], 
+                y: [7677, 10370, 15757, 20760, 26147, 29610, 34228, 36537, 37114, 37499, 38461, 40000] 
+            },
+            case2: { 
+                name: "Taiwan Data",
+                x: [0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132], 
+                y: [85, 94, 107, 555, 9507, 17565, 20923, 24280, 29652, 35024, 37485, 39500] 
+            }
         };
 
         const canvas = document.getElementById('gridCanvas'), ctx = canvas.getContext('2d');
@@ -339,25 +343,17 @@
                 updateGridVisibility();
             };
 
-
             timeS.oninput = () => {
-                            // 1. Stop the simulation immediately if it's running
-                            isPlaying = false;
-                            btnPlay.innerText = "▶ Resume";
-
-                            // 2. Determine how far we have actually simulated
-                            const maxAvailable = popHistory.length - 1;
-                            let target = parseInt(timeS.value);
-
-                            // 3. Prevent the slider from going "into the future"
-                            if (target > maxAvailable) {
-                                target = maxAvailable;
-                                timeS.value = target; 
-                            }
-
-                            // 4. Sync and draw
-                            syncToStep(target);
-                        };
+                isPlaying = false;
+                btnPlay.innerText = "▶ Resume";
+                const maxAvailable = popHistory.length - 1;
+                let target = parseInt(timeS.value);
+                if (target > maxAvailable) {
+                    target = maxAvailable;
+                    timeS.value = target; 
+                }
+                syncToStep(target);
+            };
 
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowRight') {
@@ -379,7 +375,6 @@
                 };
             });
             
-            // Visual Picker Events
             const cards = document.querySelectorAll('.picker-card');
             cards.forEach(card => {
                 card.onclick = () => {
@@ -390,7 +385,6 @@
                 };
             });
 
-            // Re-render plot instantly if Data dropdown changes
             document.getElementById('dataSelect').onchange = updateDisplay;
 
             zoomS.oninput();
@@ -446,26 +440,21 @@
             newPopHistory = [0];
             timeStep = 0;
             updateDisplay();
-            //initPlot();
         }
 
         function performSingleWasmStep() {
-                    // Safety: If for some reason popHistory is empty, we can't calculate a diff
-                    const previousCount = popHistory.length > 0 ? popHistory[popHistory.length - 1] : 0;
+            const previousCount = popHistory.length > 0 ? popHistory[popHistory.length - 1] : 0;
+            const count = wasmStepSimulation(
+                parseFloat(document.getElementById('alphaSlider').value),
+                parseInt(document.getElementById('jumpSlider').value),
+                0
+            );
 
-                    const count = wasmStepSimulation(
-                        parseFloat(document.getElementById('alphaSlider').value),
-                        parseInt(document.getElementById('jumpSlider').value),
-                        0
-                    );
-
-                    gridHistory.push(new Uint8Array(gridView));
-                    popHistory.push(count);
-
-                    // Calculate new individuals (delta)
-                    const diff = count - previousCount;
-                    newPopHistory.push(diff);
-                }
+            gridHistory.push(new Uint8Array(gridView));
+            popHistory.push(count);
+            const diff = count - previousCount;
+            newPopHistory.push(diff);
+        }
 
         function runLoop() {
             if (isPlaying && timeStep < MAX_STEPS) {
@@ -493,9 +482,6 @@
             for (let i = 0; i < WIDTH * HEIGHT; i++) {
                 if (gridView[i] === 0) continue;
                 let px = i * 4;
-                
-                // Keep Red for gridView[i] === 1 (214, 39, 40)
-                // Replaced Orange (255, 165, 0) with custom blue RGB (0, 123, 255)
                 img.data[px] = gridView[i] === 1 ? 214 : 0;
                 img.data[px+1] = gridView[i] === 1 ? 39 : 123;
                 img.data[px+2] = gridView[i] === 1 ? 40 : 255;
@@ -504,76 +490,64 @@
             ctx.putImageData(img, 0, 0);
         }
 
-        function initPlot() {
-            Plotly.newPlot('populationPlot', [], {
-                margin: { t: 40, r: 20, b: 40, l: 60 },
-                xaxis: { title: 'Step', range: [0, MAX_STEPS] },
-                yaxis: { title: 'N', autorange: true },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
-            }, {responsive: true, displayModeBar: false});
-        }
+        function refreshPlotly() {
+            const dataKey = document.getElementById('dataSelect').value;
+            let plotData = [{
+                x: Array.from({length: timeStep + 1}, (_, i) => i),
+                y: popHistory.slice(0, timeStep + 1),
+                type: 'scatter', mode: 'lines', line: { color: '#d62728', width: 3 }, name: 'Simulation'
+            }];
+            
+            let layoutShapes = [], layoutAnnotations = [];
+            let yAxisConfig = { title: 'N', autorange: true };
 
-function refreshPlotly() {
-    const dataKey = document.getElementById('dataSelect').value;
-    let plotData = [{
-        x: Array.from({length: timeStep + 1}, (_, i) => i),
-        y: popHistory.slice(0, timeStep + 1),
-        type: 'scatter', mode: 'lines', line: { color: '#d62728', width: 3 }, name: 'Simulation'
-    }];
-    
-    let layoutShapes = [], layoutAnnotations = [];
-    let yAxisConfig = { title: 'N', autorange: true }; // Default
-
-    if (dataKey !== 'none') {
-        // Force Y-axis limit to 40,000
-        yAxisConfig = { title: 'N', range: [0, 40000] };
-        const data = datasets[dataKey];
-        
-        // Show ALL markers from the beginning (not filtered by timeStep)
-        plotData.push({
-            x: data.x, y: data.y,
-            type: 'scatter', mode: 'markers', 
-            marker: { color: '#1e293b', size: 8, symbol: 'circle-open', line: {width: 2} },
-            name: 'Target Data'
-        });
-
-        // 3. Calculate MAE
-        let absErrorSum = 0, count = 0;
-        for (let i = 0; i < data.x.length; i++) {
-            let t = data.x[i];
-            if (t <= timeStep && t < popHistory.length) {
-                absErrorSum += Math.abs(popHistory[t] - data.y[i]);
-                count++;
-            }
-        }
-
-    if (count > 0) {
-                const mae = Math.round(absErrorSum / count).toLocaleString();
-                layoutAnnotations.push({
-                    x: 0, y: 1.1, xref: 'paper', yref: 'paper',
-                    text: `<b>MEAN ABSOLUTE ERROR:</b> ${mae} individuals`,
-                    showarrow: false, font: { size: 14, family: 'monospace' },
-                    align: 'left', bgcolor: 'rgba(255, 255, 255, 0.8)'
+            if (dataKey !== 'none') {
+                // Fixed Y-axis at 40,000 as requested
+                yAxisConfig = { title: 'N', range: [0, 40000] };
+                const data = datasets[dataKey];
+                
+                plotData.push({
+                    x: data.x, y: data.y,
+                    type: 'scatter', mode: 'markers', 
+                    marker: { color: '#1e293b', size: 8, symbol: 'circle-open', line: {width: 2} },
+                    name: data.name
                 });
+
+                let absErrorSum = 0, count = 0;
+                for (let i = 0; i < data.x.length; i++) {
+                    let t = data.x[i];
+                    if (t <= timeStep && t < popHistory.length) {
+                        absErrorSum += Math.abs(popHistory[t] - data.y[i]);
+                        count++;
+                    }
+                }
+
+                if (count > 0) {
+                    const mae = Math.round(absErrorSum / count).toLocaleString();
+                    layoutAnnotations.push({
+                        x: 0, y: 1.1, xref: 'paper', yref: 'paper',
+                        text: `<b>MEAN ABSOLUTE ERROR:</b> ${mae} units`,
+                        showarrow: false, font: { size: 14, family: 'monospace' },
+                        align: 'left', bgcolor: 'rgba(255, 255, 255, 0.8)'
+                    });
+                }
+            } else {
+                const currentMax = Math.max(...popHistory);
+                yAxisConfig = { title: 'N', range: [0, Math.max(2, currentMax * 1.1)] };
             }
-        } else {
-            // 4. Stable Y-axis for "No Data" (prevents -1 to 4 jump)
-            const currentMax = Math.max(...popHistory);
-            yAxisConfig = { title: 'N', range: [0, Math.max(2, currentMax * 1.1)] };
+
+            Plotly.react('populationPlot', plotData, {
+                margin: { t: 40, r: 20, b: 40, l: 60 },
+                xaxis: { title: 'Step (Weeks)', range: [0, MAX_STEPS] },
+                yaxis: yAxisConfig,
+                shapes: layoutShapes,
+                annotations: layoutAnnotations,
+                showlegend: true,
+                legend: { x: 0.05, y: 0.95, bgcolor: 'rgba(255,255,255,0.8)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', 
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            }, { responsive: true, displayModeBar: false });
         }
-
-    Plotly.react('populationPlot', plotData, {
-                    margin: { t: 40, r: 20, b: 40, l: 60 },
-                    xaxis: { title: 'Step', range: [0, MAX_STEPS] },
-                    yaxis: yAxisConfig,
-                    shapes: layoutShapes,
-                    annotations: layoutAnnotations,
-                    showlegend: false,
-                    paper_bgcolor: 'rgba(0,0,0,0)', 
-                    plot_bgcolor: 'rgba(0,0,0,0)'
-                }, { responsive: true, displayModeBar: false });
-}
-
     </script>
 </body>
 </html>
