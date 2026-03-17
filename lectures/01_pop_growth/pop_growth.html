@@ -70,6 +70,11 @@
             border-bottom: none;
             overflow: hidden; 
             position: relative;
+            cursor: grab;
+        }
+
+        .grid-container:active {
+            cursor: grabbing;
         }
 
         /* 50/50 Right Panel Layout */
@@ -115,7 +120,7 @@
         /* Zoom & Canvas Logic */
         #zoomWrapper {
             width: 200px; height: 200px; position: relative;
-            transform-origin: center center; transition: transform 0.1s;
+            transform-origin: center center; 
             border: 0.5px solid #000; 
             box-sizing: content-box; 
         }
@@ -312,6 +317,9 @@
         let gridHistory = [], popHistory = [], newPopHistory = [];
         let currentPlacement = 'circle'; 
 
+        // Panning variables
+        let panX = 0, panY = 0, isDragging = false, startX, startY;
+
         const datasets = {
             none: null,
             case1: { 
@@ -330,6 +338,10 @@
         const zoomWrapper = document.getElementById('zoomWrapper'), gridOverlay = document.getElementById('gridOverlay');
         const timeS = document.getElementById('timeSlider'), zoomS = document.getElementById('zoomSlider');
         const btnPlay = document.getElementById('btnPlay');
+
+        function updateTransform() {
+            zoomWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomS.value})`;
+        }
 
         createModule().then(Module => {
             wasmStepSimulation = Module.cwrap('stepSimulation', 'number', ['number', 'number', 'number']);
@@ -360,6 +372,11 @@
             gridOverlay.style.opacity = (z >= 6.0) ? '1' : '0';
         }
 
+
+        function updateTransform() {
+            zoomWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomS.value})`;
+        }           
+
         function initApp() {
             btnPlay.onclick = () => {
                 if(timeStep >= MAX_STEPS) resetAndPrecalc();
@@ -371,10 +388,51 @@
             document.getElementById('btnReset').onclick = resetAndPrecalc;
             
             zoomS.oninput = () => {
-                zoomWrapper.style.transform = `scale(${zoomS.value})`;
+                updateTransform();
                 document.getElementById('zoomVal').innerText = parseFloat(zoomS.value).toFixed(1) + "x";
                 updateGridVisibility();
             };
+
+            const gridContainer = document.querySelector('.grid-container');
+
+            gridContainer.addEventListener('wheel', (e) => {
+                e.preventDefault(); // Prevent page scroll
+                
+                const zoomSpeed = 0.5; 
+                let currentZoom = parseFloat(zoomS.value);
+
+                if (e.deltaY < 0) {
+                    // Scroll Up = Zoom In
+                    currentZoom = Math.min(16.0, currentZoom + zoomSpeed);
+                } else {
+                    // Scroll Down = Zoom Out
+                    currentZoom = Math.max(1.0, currentZoom - zoomSpeed);
+                }
+
+                // Sync slider and trigger visual updates
+                zoomS.value = currentZoom;
+                updateTransform();
+                document.getElementById('zoomVal').innerText = currentZoom.toFixed(1) + "x";
+                updateGridVisibility();
+            }, { passive: false });
+
+            gridContainer.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return; // Only react to left mouse button
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+            });
+
+            window.addEventListener('mouseup', () => { 
+                isDragging = false; 
+            });
 
             timeS.oninput = () => {
                 isPlaying = false;
@@ -420,6 +478,9 @@
 
             document.getElementById('dataSelect').onchange = updateDisplay;
 
+
+            
+
             zoomS.oninput();
             resetAndPrecalc();
         }
@@ -428,6 +489,12 @@
             isPlaying = false;
             cancelAnimationFrame(animationId);
             btnPlay.innerText = "▶ Run";
+            
+            // Reset panning to center
+            panX = 0;
+            panY = 0;
+            updateTransform();
+
             wasmClearGrid();
             wasmSetSeed(Date.now() >>> 0);
             
