@@ -245,8 +245,8 @@
 
             <span class="section-title">View Options</span>
             <div class="control-group">
-                <div class="control-header"><label>Zoom</label><span id="zoomVal" class="control-val">16.0x</span></div>
-                <input type="range" id="zoomSlider" min="1.0" max="16.0" step="0.1" value="16.0">
+                <div class="control-header"><label>Zoom</label><span id="zoomVal" class="control-val">32.0x</span></div>
+                <input type="range" id="zoomSlider" min="1.0" max="32.0" step="0.1" value="32.0">
             </div>
 
             <div class="control-group">
@@ -280,7 +280,6 @@
             <div class="control-group">
                 <select class="mode-selector" id="dataSelect">
                     <option value="none">No Data</option>
-                    <option value="case1">Australia</option>
                     <option value="case2">Taiwan</option>
                 </select>
             </div>
@@ -403,7 +402,7 @@
 
                 if (e.deltaY < 0) {
                     // Scroll Up = Zoom In
-                    currentZoom = Math.min(16.0, currentZoom + zoomSpeed);
+                    currentZoom = Math.min(32.0, currentZoom + zoomSpeed);
                 } else {
                     // Scroll Down = Zoom Out
                     currentZoom = Math.max(1.0, currentZoom - zoomSpeed);
@@ -478,8 +477,7 @@
 
             document.getElementById('dataSelect').onchange = updateDisplay;
 
-
-            
+           
 
             zoomS.oninput();
             resetAndPrecalc();
