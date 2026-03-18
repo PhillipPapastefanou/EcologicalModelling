@@ -310,7 +310,8 @@
     <script src="model_fast.js"></script>
 
     <script>
-        const WIDTH = 200, HEIGHT = 200, MAX_STEPS = 300;
+        const WIDTH = 200, HEIGHT = 200;
+        let MAX_STEPS = 300;
         let gridView, isPlaying = false, animationId, timeStep = 0, isGridRequested = false;
         let wasmStepSimulation, wasmClearGrid, wasmSetSeed;
         let gridHistory = [], popHistory = [], newPopHistory = [];
@@ -475,7 +476,24 @@
                 };
             });
 
-            document.getElementById('dataSelect').onchange = updateDisplay;
+            document.getElementById('dataSelect').onchange = () => {
+                // 1. Check the selected value and update MAX_STEPS
+                const dataKey = document.getElementById('dataSelect').value;
+                MAX_STEPS = (dataKey === 'case2') ? 150 : 300;
+                
+                // 2. Update the HTML range slider's maximum bound
+                const timeS = document.getElementById('timeSlider');
+                timeS.max = MAX_STEPS;
+                
+                // 3. If the user is already past step 150 when they switch, snap them back
+                if (timeStep > MAX_STEPS) {
+                    timeStep = MAX_STEPS;
+                    timeS.value = timeStep;
+                }
+                
+                // 4. Redraw the UI
+                updateDisplay();
+            };
 
            
 
