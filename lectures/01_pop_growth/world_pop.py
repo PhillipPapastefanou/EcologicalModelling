@@ -17,8 +17,8 @@ df_covid = pd.read_csv(url_covid, usecols=['location', 'date', 'total_cases'])
 df_covid['date'] = pd.to_datetime(df_covid['date'])
 
 # FILTER: Nur das Jahr 2021
-start_date = '2020-01-01'
-end_date = '2020-07-31'
+start_date = '2020-02-15'
+end_date = '2020-06-30'
 df_covid = df_covid[(df_covid['date'] >= start_date) & (df_covid['date'] <= end_date)]
 
 
