@@ -88,10 +88,11 @@
         }
 
         .plot-half {
-            flex: 1; /* Takes up 50% height if image is shown, 100% if hidden */
+            flex: 1; 
             min-height: 0; 
             padding: 20px;
             display: flex;
+            position: relative; /* Added relative positioning for the log button */
         }
 
         #populationPlot {
@@ -99,12 +100,43 @@
             width: 100%;
         }
 
+        /* New Log Button Style */
+        .log-toggle-btn {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            z-index: 10;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            width: auto;
+            flex: none;
+        }
+
+        .log-toggle-btn:hover {
+            border-color: var(--text-muted);
+            color: var(--text-main);
+        }
+
+        .log-toggle-btn.active {
+            background: var(--text-main);
+            color: white;
+            border-color: var(--text-main);
+        }
+
         .image-half {
-            flex: 1; /* Takes bottom 50% */
+            flex: 1; 
             min-height: 0;
             padding: 20px;
             border-top: 1px solid var(--border);
-            display: none; /* Hidden by default */
+            display: none; 
             align-items: center;
             justify-content: center;
             background: #ffffff;
@@ -301,6 +333,7 @@
             </div>
             <div class="right-panel">
                 <div class="plot-half">
+                    <button id="btnLogToggle" class="log-toggle-btn">LOG 10</button>
                     <div id="populationPlot"></div>
                 </div>
                 <div class="image-half" id="imageHalf">
@@ -321,6 +354,9 @@
         let wasmStepSimulation, wasmClearGrid, wasmSetSeed;
         let gridHistory = [], popHistory = [], newPopHistory = [];
         let currentPlacement = 'circle'; 
+        
+        // Added Log Axis Tracking Variable
+        let isYAxisLog = false;
 
         // Panning variables
         let panX = 0, panY = 0, isDragging = false, startX, startY;
@@ -384,6 +420,14 @@
         
 
         function initApp() {
+            // Log Button Click Listener
+            const btnLogToggle = document.getElementById('btnLogToggle');
+            btnLogToggle.onclick = () => {
+                isYAxisLog = !isYAxisLog;
+                btnLogToggle.classList.toggle('active', isYAxisLog);
+                refreshPlotly();
+            };
+
             btnPlay.onclick = () => {
                 if(timeStep >= MAX_STEPS) resetAndPrecalc();
                 isPlaying = !isPlaying;
@@ -402,20 +446,17 @@
             const gridContainer = document.querySelector('.grid-container');
 
             gridContainer.addEventListener('wheel', (e) => {
-                e.preventDefault(); // Prevent page scroll
+                e.preventDefault(); 
                 
                 const zoomSpeed = 0.5; 
                 let currentZoom = parseFloat(zoomS.value);
 
                 if (e.deltaY < 0) {
-                    // Scroll Up = Zoom In
                     currentZoom = Math.min(32.0, currentZoom + zoomSpeed);
                 } else {
-                    // Scroll Down = Zoom Out
                     currentZoom = Math.max(1.0, currentZoom - zoomSpeed);
                 }
 
-                // Sync slider and trigger visual updates
                 zoomS.value = currentZoom;
                 updateTransform();
                 document.getElementById('zoomVal').innerText = currentZoom.toFixed(1) + "x";
@@ -423,7 +464,7 @@
             }, { passive: false });
 
             gridContainer.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return; // Only react to left mouse button
+                if (e.button !== 0) return; 
                 isDragging = true;
                 startX = e.clientX - panX;
                 startY = e.clientY - panY;
@@ -483,21 +524,17 @@
             });
 
             document.getElementById('dataSelect').onchange = () => {
-                // 1. Check the selected value and update MAX_STEPS
                 const dataKey = document.getElementById('dataSelect').value;
                 MAX_STEPS = (dataKey === 'case2') ? 150 : 300;
                 
-                // 2. Update the HTML range slider's maximum bound
                 const timeS = document.getElementById('timeSlider');
                 timeS.max = MAX_STEPS;
                 
-                // 3. If the user is already past step 150 when they switch, snap them back
                 if (timeStep > MAX_STEPS) {
                     timeStep = MAX_STEPS;
                     timeS.value = timeStep;
                 }
                 
-                // 4. Redraw the UI
                 updateDisplay();
             };
 
@@ -510,7 +547,6 @@
             cancelAnimationFrame(animationId);
             btnPlay.innerText = "▶ Run";
             
-            // Reset panning to center
             panX = 0;
             panY = 0;
             updateTransform();
@@ -592,12 +628,10 @@
             timeS.value = timeStep;
             document.getElementById('timeVal').innerText = timeStep;
             
-            // Calculate Current Metrics
             let currentTotal = popHistory[timeStep] || 0;
             let currentNew = newPopHistory[timeStep] || 0;
             let currentOld = currentTotal - currentNew;
 
-            // Assign standard counts
             document.getElementById('agentCount').innerText = currentTotal;
             document.getElementById('newAgentCount').innerText = currentNew;
 
@@ -626,17 +660,14 @@
             const dataKey = document.getElementById('dataSelect').value;
             const imageHalf = document.getElementById('imageHalf');
             
-            // GATE: Only update the DOM if the state actually needs to change!
             const wantsImage = (dataKey === 'case2');
             const hasImage = (imageHalf.style.display === 'flex');
             
             if (wantsImage && !hasImage) {
                 imageHalf.style.display = 'flex';
-                // Force Plotly to instantly snap to the new 50% height
                 setTimeout(() => Plotly.Plots.resize('populationPlot'), 10);
             } else if (!wantsImage && hasImage) {
                 imageHalf.style.display = 'none';
-                // Force Plotly to instantly snap back to 100% height
                 setTimeout(() => Plotly.Plots.resize('populationPlot'), 10);
             }
 
@@ -650,7 +681,6 @@
             let yAxisConfig = { title: 'N', autorange: true };
 
             if (dataKey !== 'none') {
-                // Fixed Y-axis at 40,000 as requested
                 yAxisConfig = { title: 'N', range: [0, 40000] };
                 const data = datasets[dataKey];
                 
@@ -682,6 +712,13 @@
             } else {
                 const currentMax = Math.max(...popHistory);
                 yAxisConfig = { title: 'N', range: [0, Math.max(2, currentMax * 1.1)] };
+            }
+
+            // --- APPLIES LOG TRANSFORMATION IF ACTIVE ---
+            if (isYAxisLog) {
+                yAxisConfig.type = 'log';
+                yAxisConfig.autorange = true;
+                delete yAxisConfig.range; // Deletes linear range settings so Log scale behaves correctly
             }
 
             Plotly.react('populationPlot', plotData, {
