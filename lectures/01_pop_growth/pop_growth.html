@@ -413,12 +413,10 @@
             gridOverlay.style.opacity = (z >= 6.0) ? '1' : '0';
         }
 
-
         function updateTransform() {
             zoomWrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomS.value})`;
         }
         
-
         function initApp() {
             // Log Button Click Listener
             const btnLogToggle = document.getElementById('btnLogToggle');
@@ -505,11 +503,19 @@
                 }
             });
 
-            ['initSlider', 'alphaSlider', 'jumpSlider'].forEach(id => {
+            // Initial Slider changes cause a full structural layout reset
+            const initSlider = document.getElementById('initSlider');
+            initSlider.oninput = () => {
+                document.getElementById('initValue').innerText = initSlider.value;
+                resetAndPrecalc();
+            };
+
+            // Simulation parameters simply restore the initial grid layout
+            ['alphaSlider', 'jumpSlider'].forEach(id => {
                 const s = document.getElementById(id);
                 s.oninput = () => {
                     document.getElementById(id.replace('Slider', 'Value')).innerText = s.value;
-                    resetAndPrecalc();
+                    resetSimulationOnly();
                 };
             });
             
@@ -540,6 +546,31 @@
 
             zoomS.oninput();
             resetAndPrecalc();
+        }
+
+        // --- NEW FUNCTION: Only restarts simulation, keeping the very first grid positions ---
+        function resetSimulationOnly() {
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            btnPlay.innerText = "▶ Run";
+
+            wasmClearGrid();
+            wasmSetSeed(Date.now() >>> 0);
+
+            if (gridHistory.length > 0) {
+                // Restore the grid exactly as it was at step 0
+                gridView.set(gridHistory[0]);
+                gridHistory = [new Uint8Array(gridView)];
+                popHistory = [popHistory[0]];
+                newPopHistory = [0];
+            } else {
+                // Fallback just in case
+                resetAndPrecalc();
+                return;
+            }
+            
+            timeStep = 0;
+            updateDisplay();
         }
 
         function resetAndPrecalc() {
